@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import secrets
 import uuid
 from typing import List
 
@@ -39,10 +38,7 @@ def verify_api_key(raw_key: str, hashed_key: str) -> bool:
     try:
         encoded_raw = raw_key.encode("utf-8")
         encoded_hash = hashed_key.encode("utf-8")
-        # bcrypt.checkpw already performs constant-time comparison internally;
-        # we wrap the boolean result in compare_digest to make intent explicit.
-        match = bcrypt.checkpw(encoded_raw, encoded_hash)
-        return secrets.compare_digest(str(match), str(True))
+        return bcrypt.checkpw(encoded_raw, encoded_hash)
     except Exception:
         return False
 

@@ -3,10 +3,8 @@
 from __future__ import annotations
 
 import logging
-from datetime import datetime, timezone
 
 from config.constants import TABLE_JOB_LOCK
-from core.exceptions import DatabaseConnectionError
 from core.db import DatabaseManager
 
 logger = logging.getLogger(__name__)
@@ -84,10 +82,15 @@ class LockManager:
         timeout = timeout_minutes if timeout_minutes is not None else self._default_timeout
         try:
             conn = self._db.get_integration_connection()
+            # Params match the four ? placeholders in _ACQUIRE_SQL:
+            # 1. job_name  - WHERE clause in IF NOT EXISTS
+            # 2. timeout   - DATEADD expiry check
+            # 3. job_name  - DELETE stale row
+            # 4. job_name  - INSERT new lock row
             rows = self._db.execute_query(
                 conn,
                 _ACQUIRE_SQL,
-                (timeout, timeout, job_name, job_name),
+                (job_name, timeout, job_name, job_name),
             )
             conn.commit()
             acquired = bool(rows and rows[0][0])
