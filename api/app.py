@@ -44,7 +44,7 @@ def create_app(
     from api.routers.queue import set_queue_service
     from api.routers.status import set_scheduler
 
-    if api_client_service and api_audit_service:
+    if api_client_service:
         set_auth_services(api_client_service, api_audit_service)
     if health_checker:
         set_health_checker(health_checker)

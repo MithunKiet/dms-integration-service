@@ -1,15 +1,13 @@
-"""Repository for ApiClients table operations."""
+"""Repository for API client configuration loaded from settings."""
+import json
 from typing import List, Optional
-import logging
 
+from config.settings import Settings
 from repositories.base_repository import BaseRepository
-from config.constants import TABLE_API_CLIENTS
-
-logger = logging.getLogger(__name__)
 
 
 class ApiClientRepository(BaseRepository):
-    """Provides operations against the ``ApiClients`` table."""
+    """Provides API client records sourced from ``API_KEY_SETTINGS``."""
 
     def get_client(self, client_id: str) -> Optional[dict]:
         """Fetch a single API client record by its unique ID.
@@ -20,34 +18,70 @@ class ApiClientRepository(BaseRepository):
         Returns:
             A row dict, or ``None`` if the client does not exist.
         """
-        sql = f"SELECT * FROM {TABLE_API_CLIENTS} WHERE ClientId = ?"
-        rows = self.execute_query(sql, (client_id,))
-        if rows:
-            return self.row_to_dict(rows[0])
+        env_client = self._get_client_from_env(client_id)
+        if env_client is not None:
+            return env_client
+
+        return None
+
+    @staticmethod
+    def _get_client_from_env(client_id: str) -> Optional[dict]:
+        """Resolve a client from ``API_KEY_SETTINGS`` and map it to row-style keys."""
+        settings = Settings.get_settings()
+        for client in settings.api_key_settings.clients:
+            if client.client_id.lower() != client_id.lower():
+                continue
+
+            key_hash = client.api_key if client.api_key.startswith("$2") else ""
+            raw_api_key = "" if key_hash else client.api_key
+            return {
+                "ClientId": client.client_id,
+                "ClientName": client.client_name,
+                "KeyPrefix": None,
+                "KeyHash": key_hash,
+                "RawApiKey": raw_api_key,
+                "AllowedEndpoints": json.dumps(client.allowed_endpoints),
+                "RateLimitPerMinute": 60,
+                "IsActive": client.is_active,
+                "CreatedAt": None,
+                "ExpiresAt": None,
+                "LastUsedAt": None,
+            }
         return None
 
     def update_last_used(self, client_id: str) -> None:
-        """Update the LastUsedAt timestamp for a client after a successful request.
+        """Best-effort hook kept for compatibility.
 
         Args:
             client_id: The unique identifier for the API client.
         """
-        sql = f"""
-            UPDATE {TABLE_API_CLIENTS}
-               SET LastUsedAt = GETUTCDATE()
-             WHERE ClientId   = ?
-        """
-        self.execute_non_query(sql, (client_id,))
+        _ = client_id
 
     def list_clients(self) -> List[dict]:
-        """Return all registered API client records.
+        """Return all registered API clients from settings.
 
         Returns:
             A list of row dicts ordered by ClientId.
         """
-        sql = f"SELECT * FROM {TABLE_API_CLIENTS} ORDER BY ClientId"
-        rows = self.execute_query(sql)
-        return self.rows_to_dicts(rows)
+        settings = Settings.get_settings()
+        rows: List[dict] = []
+        for client in settings.api_key_settings.clients:
+            rows.append(
+                {
+                    "ClientId": client.client_id,
+                    "ClientName": client.client_name,
+                    "KeyPrefix": None,
+                    "KeyHash": client.api_key if client.api_key.startswith("$2") else "",
+                    "RawApiKey": "" if client.api_key.startswith("$2") else client.api_key,
+                    "AllowedEndpoints": json.dumps(client.allowed_endpoints),
+                    "RateLimitPerMinute": 60,
+                    "IsActive": client.is_active,
+                    "CreatedAt": None,
+                    "ExpiresAt": None,
+                    "LastUsedAt": None,
+                }
+            )
+        return sorted(rows, key=lambda item: str(item.get("ClientId", "")))
 
     def insert_client(
         self,
@@ -58,7 +92,7 @@ class ApiClientRepository(BaseRepository):
         allowed_endpoints: str,
         rate_limit: int = 60,
     ) -> None:
-        """Insert a new API client record.
+        """Insert is not supported for env-backed clients.
 
         Args:
             client_id: Unique identifier for the client (e.g. ``"svc-erp"``).
@@ -68,14 +102,6 @@ class ApiClientRepository(BaseRepository):
             allowed_endpoints: JSON array string of permitted endpoint paths.
             rate_limit: Maximum requests per minute allowed for this client.
         """
-        sql = f"""
-            INSERT INTO {TABLE_API_CLIENTS}
-                (ClientId, ClientName, KeyPrefix, KeyHash, AllowedEndpoints,
-                 RateLimitPerMinute, IsActive, CreatedAt)
-            VALUES (?, ?, ?, ?, ?, ?, 1, GETUTCDATE())
-        """
-        self.execute_non_query(
-            sql,
-            (client_id, client_name, key_prefix, key_hash, allowed_endpoints, rate_limit),
+        raise NotImplementedError(
+            "insert_client is not supported when API clients are sourced from API_KEY_SETTINGS"
         )
-        logger.info("Inserted API client '%s'.", client_id)

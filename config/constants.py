@@ -44,7 +44,6 @@ TABLE_INTEGRATION_JOB_QUEUE = "IntegrationJobQueue"
 TABLE_INTEGRATION_SYNC_STATE = "IntegrationSyncState"
 TABLE_INTEGRATION_FAILED_RECORDS = "IntegrationFailedRecords"
 TABLE_JOB_LOCK = "JobLock"
-TABLE_API_CLIENTS = "ApiClients"
 TABLE_API_AUDIT_LOGS = "ApiAuditLogs"
 
 # Header names

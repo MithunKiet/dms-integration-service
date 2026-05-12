@@ -7,7 +7,6 @@ from typing import TYPE_CHECKING, Optional
 
 from fastapi import Header, HTTPException, Request, status
 
-from config.constants import HEADER_API_KEY, HEADER_CLIENT_ID
 from core.exceptions import AuthenticationError, AuthorizationError
 from models.api_client import ApiClient
 
@@ -23,7 +22,7 @@ _api_audit_service: Optional["ApiAuditService"] = None
 
 def set_auth_services(
     client_svc: "ApiClientService",
-    audit_svc: "ApiAuditService",
+    audit_svc: Optional["ApiAuditService"] = None,
 ) -> None:
     """Wire the auth and audit services used by :func:`get_authenticated_client`."""
     global _api_client_service, _api_audit_service

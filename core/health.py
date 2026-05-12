@@ -141,6 +141,7 @@ class HealthChecker:
         db_manager: DatabaseManager,
         scheduler: Any,
         queue_repo: Optional[Any] = None,
+        include_integration_db: bool = True,
     ) -> SystemHealth:
         """Aggregate health across all components into a :class:`~models.health_status.SystemHealth`.
 
@@ -154,6 +155,8 @@ class HealthChecker:
             db_manager: Database manager used to probe each database.
             scheduler: The running scheduler instance.
             queue_repo: Optional queue repository to probe.
+            include_integration_db: Whether to include ``integration_db`` in
+                component checks.
 
         Returns:
             A :class:`~models.health_status.SystemHealth` with all component
@@ -161,7 +164,11 @@ class HealthChecker:
         """
         components: dict[str, ComponentHealth] = {}
 
-        for db_type in (DbType.HMIS, DbType.DMS, DbType.INTEGRATION):
+        db_types = [DbType.HMIS, DbType.DMS]
+        if include_integration_db:
+            db_types.append(DbType.INTEGRATION)
+
+        for db_type in db_types:
             comp = self.check_db(db_manager, db_type)
             components[comp.name] = comp
 

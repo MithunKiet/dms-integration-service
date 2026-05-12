@@ -3,9 +3,26 @@
 from __future__ import annotations
 
 from functools import lru_cache
-from typing import Optional
+from typing import List
 
+from pydantic import BaseModel, Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+
+class ApiKeyClientConfig(BaseModel):
+    """Single API client definition loaded from ``api_key_settings``."""
+
+    client_id: str
+    client_name: str
+    api_key: str
+    is_active: bool = True
+    allowed_endpoints: List[str] = Field(default_factory=list)
+
+
+class ApiKeySettings(BaseModel):
+    """Container for API key client configuration."""
+
+    clients: List[ApiKeyClientConfig] = Field(default_factory=list)
 
 
 class Settings(BaseSettings):
@@ -26,8 +43,8 @@ class Settings(BaseSettings):
     integration_connection: str = ""
 
     # API settings
-    api_host: str = "0.0.0.0"
-    api_port: int = 8000
+    api_host: str = "127.0.0.1"
+    api_port: int = 8001
     api_workers: int = 1
 
     # Scheduler
@@ -47,6 +64,7 @@ class Settings(BaseSettings):
     # Security
     require_https: bool = False
     api_keys_enabled: bool = True
+    api_key_settings: ApiKeySettings = Field(default_factory=ApiKeySettings)
 
     @classmethod
     def get_settings(cls) -> "Settings":
